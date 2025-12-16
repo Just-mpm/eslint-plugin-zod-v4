@@ -12,6 +12,7 @@ ESLint plugin for Zod v4 best practices and migration from v3.
 - Auto-fix support for most rules
 - Educational error messages explaining the correct approach
 - Full ESLint 9+ flat config support
+- **React-aware**: Recognizes `useMemo`/`useCallback` for schema memoization
 
 ## Installation
 
@@ -68,18 +69,18 @@ These rules detect Zod v3 patterns that will break in v4.
 
 | Rule | Description | Fixable |
 |------|-------------|---------|
-| [no-deprecated-string-format](docs/rules/no-deprecated-string-format.md) | Disallow `z.string().email()` etc. Use `z.email()` instead. | Yes |
-| [no-record-single-arg](docs/rules/no-record-single-arg.md) | Require `z.record(keySchema, valueSchema)` with two arguments. | No |
-| [no-deprecated-error-params](docs/rules/no-deprecated-error-params.md) | Disallow `invalid_type_error`/`required_error`. Use `error` param. | Yes |
-| [no-deprecated-format-methods](docs/rules/no-deprecated-format-methods.md) | Disallow `.format()`/`.flatten()` on ZodError. Use `z.treeifyError()`. | No |
-| [no-merge-method](docs/rules/no-merge-method.md) | Disallow `.merge()`. Use `.extend()` instead. | No |
-| [no-superrefine](docs/rules/no-superrefine.md) | Disallow `.superRefine()`. Use `.check()` instead. | No |
-| [no-errors-property](docs/rules/no-errors-property.md) | Disallow `error.errors`. Use `error.issues` instead. | Yes |
-| [no-deprecated-object-methods](docs/rules/no-deprecated-object-methods.md) | Disallow `.strict()`/`.passthrough()`/`.strip()`. Use top-level functions. | No |
-| [no-native-enum](docs/rules/no-native-enum.md) | Disallow `z.nativeEnum()`. Use `z.enum()` instead. | No |
-| [no-deep-partial](docs/rules/no-deep-partial.md) | Disallow `.deepPartial()` (removed in v4). | No |
-| [no-deprecated-ip-methods](docs/rules/no-deprecated-ip-methods.md) | Disallow `.ip()`/`.cidr()`. Use `.ipv4()`/`.ipv6()` variants. | No |
-| [no-promise-schema](docs/rules/no-promise-schema.md) | Disallow `z.promise()`. Await before parsing. | No |
+| [no-deprecated-string-format](docs/rules/no-deprecated-string-format.md) | Disallow `z.string().email()` etc. Use `z.email()` instead. | ✅ Yes |
+| [no-record-single-arg](docs/rules/no-record-single-arg.md) | Require `z.record(keySchema, valueSchema)` with two arguments. | ❌ No |
+| [no-deprecated-error-params](docs/rules/no-deprecated-error-params.md) | Disallow `invalid_type_error`/`required_error`. Use `error` param. | ✅ Yes |
+| [no-deprecated-format-methods](docs/rules/no-deprecated-format-methods.md) | Disallow `.format()`/`.flatten()` on ZodError. Use `z.treeifyError()`. | ❌ No |
+| [no-merge-method](docs/rules/no-merge-method.md) | Disallow `.merge()`. Use `.extend()` instead. | ❌ No |
+| [no-superrefine](docs/rules/no-superrefine.md) | Disallow `.superRefine()`. Use `.check()` instead. | ✅ Yes |
+| [no-errors-property](docs/rules/no-errors-property.md) | Disallow `error.errors`. Use `error.issues` instead. | ✅ Yes |
+| [no-deprecated-object-methods](docs/rules/no-deprecated-object-methods.md) | Disallow `.strict()`/`.passthrough()`/`.strip()`. Use top-level functions. | ❌ No |
+| [no-native-enum](docs/rules/no-native-enum.md) | Disallow `z.nativeEnum()`. Use `z.enum()` instead. | ❌ No |
+| [no-deep-partial](docs/rules/no-deep-partial.md) | Disallow `.deepPartial()` (removed in v4). | ❌ No |
+| [no-deprecated-ip-methods](docs/rules/no-deprecated-ip-methods.md) | Disallow `.ip()`/`.cidr()`. Use `.ipv4()`/`.ipv6()` variants. | ❌ No |
+| [no-promise-schema](docs/rules/no-promise-schema.md) | Disallow `z.promise()`. Await before parsing. | ❌ No |
 
 ### Best Practices (severity: warn)
 
@@ -87,9 +88,62 @@ These rules enforce Zod v4 best practices for optimal code quality.
 
 | Rule | Description | Fixable |
 |------|-------------|---------|
-| [prefer-safeParse](docs/rules/prefer-safeParse.md) | Prefer `.safeParse()` over `.parse()` for explicit error handling. | Yes |
-| [no-schema-in-render](docs/rules/no-schema-in-render.md) | Disallow creating schemas inside functions/components. | No |
-| [prefer-error-param](docs/rules/prefer-error-param.md) | Prefer `error` param over deprecated `message` param. | Yes |
+| [prefer-safeParse](docs/rules/prefer-safeParse.md) | Prefer `.safeParse()` over `.parse()` for explicit error handling. | ✅ Yes |
+| [no-schema-in-render](docs/rules/no-schema-in-render.md) | Disallow creating schemas inside functions/components. **React-aware**: allows `useMemo`/`useCallback`. | ❌ No |
+| [prefer-error-param](docs/rules/prefer-error-param.md) | Prefer `error` param over deprecated `message` param. | ✅ Yes |
+
+## React Integration
+
+### Schema Creation in Components
+
+The `no-schema-in-render` rule is React-aware and recognizes memoization patterns:
+
+```tsx
+// ❌ Bad - Schema recreated every render
+const MyComponent = () => {
+  const schema = z.object({ name: z.string() })  // Error!
+  return <Form schema={schema} />
+}
+
+// ✅ Good - Schema at module level
+const schema = z.object({ name: z.string() })
+const MyComponent = () => {
+  return <Form schema={schema} />
+}
+
+// ✅ Good - Schema memoized with useMemo (for translated schemas)
+const MyComponent = () => {
+  const t = useTranslations()
+  const schema = useMemo(() => z.object({
+    email: z.email(t('invalidEmail')),
+  }), [t])
+  return <Form schema={schema} />
+}
+
+// ✅ Good - Factory function with useMemo
+const createSchema = (t) => z.object({ email: z.email(t('error')) })
+const MyComponent = () => {
+  const t = useTranslations()
+  const schema = useMemo(() => createSchema(t), [t])
+  return <Form schema={schema} />
+}
+```
+
+### TypeScript Workaround for `.check()` ctx.addIssue
+
+When using `.check()`, TypeScript may incorrectly flag `ctx.addIssue()` calls:
+
+```typescript
+// If you see: @typescript-eslint/no-unsafe-call on ctx.addIssue()
+// Add this comment to suppress the false positive:
+.check((ctx) => {
+  const { value: data } = ctx;
+  if (!data.name) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- Zod v4 ctx.addIssue is type-safe at runtime
+    ctx.addIssue({ code: 'custom', message: 'Name required' });
+  }
+})
+```
 
 ## Migration Guide
 
@@ -124,9 +178,11 @@ z.record(z.string(), z.string())
 ```javascript
 // Before (deprecated)
 z.string({ invalid_type_error: "Must be string", required_error: "Required" })
+z.string().refine(fn, { message: "Error" })
 
 // After (v4)
 z.string({ error: "Must be string" })
+z.string().refine(fn, { error: "Error" })
 // Or with function
 z.string({ error: (iss) => `Error: ${iss.code}` })
 ```
@@ -164,7 +220,7 @@ schema1.extend(schema2.shape)
 z.object({ ...schema1.shape, ...schema2.shape })
 ```
 
-#### 7. Super Refine
+#### 7. Super Refine → Check
 
 ```javascript
 // Before (deprecated)
@@ -175,6 +231,14 @@ schema.superRefine((val, ctx) => {
 })
 
 // After (v4)
+schema.check((ctx) => {
+  const { value: val } = ctx;
+  if (!isValid(val)) {
+    ctx.addIssue({ code: "custom", message: "Invalid" })
+  }
+})
+
+// Or for simple cases
 schema.check((val) => isValid(val) || "Invalid")
 ```
 
@@ -234,6 +298,22 @@ schema.deepPartial()
 schema.partial()  // shallow only
 // For deep partial, manually create nested partial schemas
 ```
+
+## Changelog
+
+### v0.2.0 (2025-12-16)
+
+**New Features:**
+- `no-superrefine`: Now has **auto-fix** support! Transforms `.superRefine((data, ctx) => {...})` to `.check((ctx) => { const { value: data } = ctx; ...})`
+- `no-schema-in-render`: Now **recognizes `useMemo` and `useCallback`** - schemas inside memoized callbacks are allowed
+- Improved error messages with migration examples
+
+**Bug Fixes:**
+- Fixed false positives in `no-schema-in-render` when using React memoization hooks
+
+### v0.1.1 (2025-12-15)
+
+- Initial release with 15 rules (12 breaking changes + 3 best practices)
 
 ## Contributing
 

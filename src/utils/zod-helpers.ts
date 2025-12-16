@@ -265,3 +265,50 @@ export function isLikelyZodSchemaCall(node: TSESTree.CallExpression): boolean {
 
   return false
 }
+
+/**
+ * React hooks that memoize their callbacks
+ */
+const REACT_MEMO_HOOKS = ["useMemo", "useCallback"] as const
+
+/**
+ * Check if a node is inside a memoized callback (useMemo/useCallback)
+ * This is used to allow schema creation inside memoized callbacks
+ */
+export function isInsideMemoizedCallback(node: TSESTree.Node): boolean {
+  // We're looking for the pattern: useMemo(() => ..., [deps])
+  // where node is inside the arrow function
+
+  // Check if parent is a CallExpression with useMemo/useCallback
+  if (node.type !== "ArrowFunctionExpression" && node.type !== "FunctionExpression") {
+    return false
+  }
+
+  const parent = node.parent
+  if (!parent || parent.type !== "CallExpression") {
+    return false
+  }
+
+  // Check if this function is the first argument of useMemo/useCallback
+  if (parent.arguments[0] !== node) {
+    return false
+  }
+
+  // Check if the callee is useMemo or useCallback
+  const callee = parent.callee
+
+  // Direct call: useMemo(...)
+  if (callee.type === "Identifier") {
+    return REACT_MEMO_HOOKS.includes(callee.name as typeof REACT_MEMO_HOOKS[number])
+  }
+
+  // Namespaced call: React.useMemo(...)
+  if (
+    callee.type === "MemberExpression" &&
+    callee.property.type === "Identifier"
+  ) {
+    return REACT_MEMO_HOOKS.includes(callee.property.name as typeof REACT_MEMO_HOOKS[number])
+  }
+
+  return false
+}

@@ -30,6 +30,61 @@ ruleTester.run("no-schema-in-render", noSchemaInRender, {
         return obj
       }
     `,
+
+    // ✅ NEW: useMemo with schema creation (should be valid)
+    `
+      const MyComponent = () => {
+        const schema = useMemo(() => z.object({ name: z.string() }), [])
+        return null
+      }
+    `,
+    `
+      const MyComponent = () => {
+        const schema = useMemo(() => z.email(), [])
+        return null
+      }
+    `,
+    `
+      function MyComponent() {
+        const schema = useMemo(() => z.string().min(1), [])
+        return schema.parse(value)
+      }
+    `,
+
+    // ✅ NEW: React.useMemo (namespaced)
+    `
+      const MyComponent = () => {
+        const schema = React.useMemo(() => z.object({ id: z.number() }), [])
+        return null
+      }
+    `,
+
+    // ✅ NEW: useCallback with schema creation (edge case but valid)
+    `
+      const MyComponent = () => {
+        const createSchema = useCallback(() => z.object({ name: z.string() }), [])
+        return null
+      }
+    `,
+
+    // ✅ NEW: useMemo with dependencies
+    `
+      const MyComponent = ({ t }) => {
+        const schema = useMemo(() => z.object({
+          email: z.email(t('invalidEmail')),
+        }), [t])
+        return null
+      }
+    `,
+
+    // ✅ NEW: Factory function called inside useMemo
+    `
+      const createSchema = (t) => z.object({ email: z.email(t('error')) })
+      const MyComponent = ({ t }) => {
+        const schema = useMemo(() => createSchema(t), [t])
+        return null
+      }
+    `,
   ],
   invalid: [
     // Schema created inside regular function - z.object creates z.object + nested z.string = 2 errors
@@ -91,6 +146,33 @@ ruleTester.run("no-schema-in-render", noSchemaInRender, {
         { messageId: "schemaInRender" },
         { messageId: "schemaInRender" },
       ],
+    },
+
+    // ❌ NEW: Schema NOT inside useMemo (still invalid)
+    {
+      code: `
+        const MyComponent = () => {
+          const schema = z.email()
+          const memoizedValue = useMemo(() => computeValue(), [])
+          return null
+        }
+      `,
+      errors: [{ messageId: "schemaInRender" }],
+    },
+
+    // ❌ NEW: Schema inside a nested function, not useMemo callback
+    {
+      code: `
+        const MyComponent = () => {
+          const memoized = useMemo(() => {
+            return function inner() {
+              return z.string()
+            }
+          }, [])
+          return null
+        }
+      `,
+      errors: [{ messageId: "schemaInRender" }],
     },
   ],
 })
