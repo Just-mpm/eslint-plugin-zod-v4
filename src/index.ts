@@ -23,7 +23,7 @@ import { preferErrorParam } from "./rules/prefer-error-param"
 // Plugin metadata
 const meta = {
   name: "eslint-plugin-zod-v4",
-  version: "0.1.0",
+  version: "0.1.1",
 } as const
 
 // All rules
