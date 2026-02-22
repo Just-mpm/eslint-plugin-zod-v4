@@ -81,6 +81,8 @@ These rules detect Zod v3 patterns that will break in v4.
 | [no-deep-partial](docs/rules/no-deep-partial.md) | Disallow `.deepPartial()` (removed in v4). | ❌ No |
 | [no-deprecated-ip-methods](docs/rules/no-deprecated-ip-methods.md) | Disallow `.ip()`/`.cidr()`. Use `.ipv4()`/`.ipv6()` variants. | ❌ No |
 | [no-promise-schema](docs/rules/no-promise-schema.md) | Disallow `z.promise()`. Await before parsing. | ❌ No |
+| [no-throw-in-refine](docs/rules/no-throw-in-refine.md) | Disallow `throw` inside `.refine()`/`.superRefine()`/`.transform()`. Use return patterns. | ❌ No |
+| [require-enum-as-const](docs/rules/require-enum-as-const.md) | Require `as const` for arrays passed to `z.enum()`. | ❌ No |
 
 ### Best Practices (severity: warn)
 
@@ -300,6 +302,16 @@ schema.partial()  // shallow only
 ```
 
 ## Changelog
+
+### v0.3.0 (2025-02-21)
+
+**New Rules:**
+- `no-throw-in-refine`: Detects `throw` statements inside `.refine()`, `.superRefine()`, and `.transform()` callbacks. These errors are **not captured by Zod**, causing silent failures. The rule provides educational messages with correct patterns for each method.
+- `require-enum-as-const`: Requires `as const` for arrays passed to `z.enum()`. Without it, TypeScript infers `string[]` instead of the literal union, breaking type inference.
+
+**Improvements:**
+- Added 61 new test cases (276 total tests passing)
+- Updated documentation with migration examples for new rules
 
 ### v0.2.0 (2025-12-16)
 

@@ -5,6 +5,8 @@ export { noDeprecatedErrorParams } from "./no-deprecated-error-params"
 export { noDeprecatedFormatMethods } from "./no-deprecated-format-methods"
 export { noMergeMethod } from "./no-merge-method"
 export { noSuperRefine } from "./no-superrefine"
+export { noThrowInRefine } from "./no-throw-in-refine"
+export { requireEnumAsConst } from "./require-enum-as-const"
 
 // Best Practices (warnings)
 export { preferSafeParse } from "./prefer-safeParse"
